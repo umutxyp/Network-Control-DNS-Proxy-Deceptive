@@ -1,0 +1,75 @@
+{
+  "name": "shroudly",
+  "version": "1.0.0",
+  "description": "Shroudly - Unseen. Unstoppable. | A Codeshare Technology Ltd Product",
+  "main": "electron/main.js",
+  "author": "Codeshare Technology Ltd",
+  "homepage": "https://codeshare.me",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/umutxyp/Shroudly"
+  },
+  "bugs": {
+    "url": "https://github.com/umutxyp/Shroudly/issues"
+  },
+  "license": "MIT",
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build && node scripts/fix-paths.js",
+    "start": "next start",
+    "setup": "node scripts/download-goodbyedpi.js",
+    "postinstall": "node scripts/download-goodbyedpi.js",
+    "electron": "npm run build && electron .",
+    "electron:dev": "concurrently \"next dev\" \"wait-on http://localhost:3000 && electron .\"",
+    "electron:prod": "npm run build && electron .",
+    "electron:build": "npm run setup && npm run build && electron-builder --win --publish never"
+  },
+  "build": {
+    "appId": "me.codeshare.shroudly",
+    "productName": "Shroudly",
+    "win": {
+      "requestedExecutionLevel": "requireAdministrator",
+      "icon": "public/icon.ico",
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "files": [
+        "out/**/*",
+        "electron/**/*",
+        "public/**/*",
+        "electron/tools/goodbyedpi/**/*"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true
+    }
+  },
+  "dependencies": {
+    "canvas": "^3.2.0",
+    "electron-store": "^8.1.0",
+    "next": "^14.2.0",
+    "react": "^18.3.0",
+    "react-dom": "^18.3.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "@types/react": "^18.3.0",
+    "adm-zip": "^0.5.16",
+    "autoprefixer": "^10.4.0",
+    "concurrently": "^8.2.2",
+    "electron": "^33.3.1",
+    "electron-builder": "^24.13.3",
+    "postcss": "^8.4.0",
+    "tailwindcss": "^3.4.0",
+    "typescript": "^5.0.0",
+    "wait-on": "^7.2.0"
+  }
+}
