@@ -68,9 +68,24 @@ export default function SettingsPanel() {
   };
 
   const saveSetting = async (key, value) => {
+    // Optimistic update
     setSettings({ ...settings, [key]: value });
+    
     if (typeof window !== 'undefined' && window.electron) {
-      await window.electron.setSetting(key, value);
+      const result = await window.electron.setSetting(key, value);
+      
+      // Check if auto-start setting failed
+      if (key === 'autoStart' && result && result.success === false) {
+        // Revert the setting
+        setSettings(prev => ({ ...prev, [key]: false }));
+        
+        // Show error message
+        if (typeof window !== 'undefined' && window.showToast) {
+          window.showToast(result.error || 'Failed to set auto-start', 'error');
+        } else {
+          alert(result.error || 'Failed to set auto-start. Try running as administrator.');
+        }
+      }
     }
   };
 
