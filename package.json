@@ -19,17 +19,22 @@
     "start": "next start",
     "setup": "node scripts/download-goodbyedpi.js",
     "postinstall": "node scripts/download-goodbyedpi.js",
+    "create-icon": "node scripts/create-icon.js",
     "electron": "npm run build && electron .",
     "electron:dev": "concurrently \"next dev\" \"wait-on http://localhost:3000 && electron .\"",
     "electron:prod": "npm run build && electron .",
-    "electron:build": "npm run setup && npm run build && electron-builder --win --publish never"
+    "electron:build": "npm run create-icon && npm run setup && npm run build && electron-builder --win --publish never"
   },
   "build": {
     "appId": "me.codeshare.shroudly",
     "productName": "Shroudly",
+    "directories": {
+      "buildResources": "public",
+      "output": "dist"
+    },
     "win": {
       "requestedExecutionLevel": "requireAdministrator",
-      "icon": "public/icon.ico",
+      "icon": "icon.ico",
       "target": [
         {
           "target": "nsis",
@@ -49,8 +54,22 @@
       "oneClick": false,
       "allowToChangeInstallationDirectory": true,
       "createDesktopShortcut": true,
-      "createStartMenuShortcut": true
-    }
+      "createStartMenuShortcut": true,
+      "installerIcon": "icon.ico",
+      "uninstallerIcon": "icon.ico",
+      "installerHeader": "icon.ico",
+      "installerHeaderIcon": "icon.ico"
+    },
+    "extraResources": [
+      {
+        "from": "public/icon.ico",
+        "to": "icon.ico"
+      },
+      {
+        "from": "public/icon-small.png",
+        "to": "icon-small.png"
+      }
+    ]
   },
   "dependencies": {
     "canvas": "^3.2.0",
