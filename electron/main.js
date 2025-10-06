@@ -347,28 +347,64 @@ function createTray() {
 
 // Auto-start functionality
 function setAutoStart(enable) {
-  if (isDev) {
-    console.log('[Shroudly] Auto-start not available in development mode');
-    return;
-  }
+  try {
+    if (isDev) {
+      console.log('[Shroudly] Auto-start not available in development mode');
+      addLog('warning', 'Auto-start not available in development mode');
+      return false;
+    }
 
-  app.setLoginItemSettings({
-    openAtLogin: enable,
-    openAsHidden: false,
-    path: process.execPath,
-    args: []
-  });
-  
-  console.log(`[Shroudly] Auto-start ${enable ? 'enabled' : 'disabled'}`);
-  addLog('info', `Auto-start ${enable ? 'enabled' : 'disabled'}`);
+    app.setLoginItemSettings({
+      openAtLogin: enable,
+      openAsHidden: false,
+      path: process.execPath,
+      args: [],
+      name: 'Shroudly'
+    });
+    
+    // Verify the setting was applied
+    const settings = app.getLoginItemSettings();
+    if (settings.openAtLogin === enable) {
+      console.log(`[Shroudly] Auto-start ${enable ? 'enabled' : 'disabled'} successfully`);
+      addLog('success', `Auto-start ${enable ? 'enabled' : 'disabled'}`);
+      return true;
+    } else {
+      console.error('[Shroudly] Failed to set auto-start');
+      addLog('error', 'Failed to set auto-start - insufficient permissions');
+      return false;
+    }
+  } catch (error) {
+    console.error('[Shroudly] Auto-start error:', error);
+    addLog('error', `Auto-start error: ${error.message}`);
+    return false;
+  }
 }
 
 app.whenReady().then(async () => {
   createWindow();
   dpiBypass = new DPIBypass(store);
 
+  // Check and sync auto-start setting on startup
+  if (!isDev) {
+    const savedAutoStart = store.get('autoStart', false);
+    const currentSettings = app.getLoginItemSettings();
+    
+    // Sync if mismatch
+    if (savedAutoStart !== currentSettings.openAtLogin) {
+      console.log('[Shroudly] Auto-start setting mismatch detected, syncing...');
+      setAutoStart(savedAutoStart);
+    }
+  }
+
+  let autoStartAttempted = false; // Prevent multiple auto-start attempts
+
   // Auto-start DPI bypass if Auto Mode is enabled
   mainWindow.webContents.on('did-finish-load', async () => {
+    if (autoStartAttempted) {
+      return; // Already attempted, skip
+    }
+    autoStartAttempted = true;
+
     const autoMode = store.get('autoMode', true);
     if (autoMode) {
       addLog('info', 'Auto Mode enabled - starting DPI bypass automatically');
@@ -376,10 +412,20 @@ app.whenReady().then(async () => {
       // Wait a bit for UI to be ready
       setTimeout(async () => {
         try {
+          if (!dpiBypass) {
+            addLog('error', 'DPI Bypass engine not initialized');
+            return;
+          }
+
           const result = await dpiBypass.start();
-          if (result.success) {
+          if (result && result.success) {
             addLog('success', 'DPI bypass started automatically');
             updateStatusIndicators(true);
+            
+            // Notify renderer
+            if (mainWindow && !mainWindow.isDestroyed()) {
+              mainWindow.webContents.send('dpi:status-changed', true);
+            }
             
             // Show notification if enabled
             const showNotifications = store.get('showNotifications', true);
@@ -394,11 +440,12 @@ app.whenReady().then(async () => {
               }
             }
           } else {
-            addLog('error', `Auto-start failed: ${result.error}`);
+            const errorMsg = result?.error || 'Unknown error';
+            addLog('error', `Auto-start failed: ${errorMsg}`);
             updateStatusIndicators(false);
           }
         } catch (error) {
-          addLog('error', `Auto-start error: ${error.message}`);
+          addLog('error', `Auto-start error: ${error?.message || 'Unknown error'}`);
           updateStatusIndicators(false);
         }
       }, 2000); // 2 second delay for UI to load
@@ -515,10 +562,15 @@ ipcMain.handle('settings:set', (event, key, value) => {
   
   // Handle special settings
   if (key === 'autoStart') {
-    setAutoStart(value);
+    const success = setAutoStart(value);
+    if (!success && !isDev) {
+      // If setting failed, revert the store value
+      store.set('autoStart', false);
+      return { success: false, error: 'Failed to set auto-start. Try running as administrator.' };
+    }
   }
   
-  return true;
+  return { success: true };
 });
 
 ipcMain.handle('settings:getAll', () => {
